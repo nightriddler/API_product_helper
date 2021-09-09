@@ -51,8 +51,8 @@ class CustomUserViewSet(
                 permissions.AllowAny,
                 # CurrentUserOrAdmin
                 ]
-        elif self.action == 'subscriptions':
-            self.permission_classes = [permissions.AllowAny]
+        # elif self.action == 'subscriptions':
+        #     self.permission_classes = [permissions.IsAuthenticated]
         return super().get_permissions()
 
     def get_serializer_class(self):
@@ -72,9 +72,11 @@ class CustomUserViewSet(
         detail=False
     )
     def me(self, request):
-        serializer = self.get_serializer_class()
-        data = serializer(request.user).data
-        return Response(data, status=status.HTTP_200_OK)
+        
+        serializer = self.get_serializer(request.user)        
+        # serializer = self.get_serializer_class()
+        # data = serializer(request.user).data
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(
         methods=['POST'],
@@ -90,17 +92,23 @@ class CustomUserViewSet(
 
     @action(
         methods=['GET'],
-        permission_classes=[permissions.AllowAny],
+        permission_classes=[permissions.IsAuthenticated],
         detail=False)
     def subscriptions(self, request):
         
-        queryset = User.objects.all().order_by('id')
+        following = Follow.objects.filter(user=request.user).order_by('author')
+
+        queryset =[User.objects.get(id=author.author.id) for author in following]
+        # for author in following:
+        #     queryset.append(User.objects.get(id=author.author.id))
+
+        # queryset = User.objects.filter(id=Follow.objects.get(user=request.user).author.id)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-
+        # Изменить сериализтор когда добавятся рецепты.
         serializer = self.get_serializer(queryset, many=True)
         # data = serializer.data
         return Response(serializer.data, status=status.HTTP_200_OK)
