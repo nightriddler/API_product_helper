@@ -1,5 +1,11 @@
+from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models.deletion import CASCADE
+from django.db.models.expressions import Case
+from django.db.models.fields.related import ManyToManyField
 
+
+User = get_user_model()
 
 class Ingredient(models.Model):
     name = models.CharField(
@@ -8,8 +14,9 @@ class Ingredient(models.Model):
         help_text='Укажите ингредиент'
     )
     # amount = models.PositiveIntegerField(
-    #     verbose_name='Название ингредиента',
-    #     help_text='Укажите ингредиент',
+    #     verbose_name='Количество',
+    #     help_text='Укажите количество',
+    #     default='0'
     # )
     measurement_unit = models.CharField(
         max_length=250,
@@ -22,6 +29,36 @@ class Ingredient(models.Model):
     
     def __str__(self):
         return self.name
+
+
+class IngredientAmount(models.Model):
+    recipe = models.ForeignKey(
+        'Recipe',
+        on_delete=models.PROTECT,
+        blank=False,
+        # related_name='ingredientsamount',
+        verbose_name='Рецепт',
+        help_text='Укажите рецепт',
+        # default='0'
+    )
+    ingredients = models.ForeignKey(
+        Ingredient,
+        on_delete=models.PROTECT,
+        blank=False,
+        # related_name='ingredientsamount',
+        verbose_name='Ингредиенты',
+        help_text='Укажите ингредиенты',
+        # default='0'
+    )
+    amount = models.PositiveIntegerField(
+        verbose_name='Количество',
+        help_text='Укажите количество',
+        default='0'
+    )
+    
+    def __str__(self):
+        return f'{self.ingredients} -> {self.recipe}'
+
 
 
 class Tag(models.Model):
@@ -48,3 +85,73 @@ class Tag(models.Model):
     
     def __str__(self):
         return self.name
+
+
+class Recipe(models.Model):
+    tags = models.ManyToManyField(
+        Tag,
+        blank=True,
+        related_name='recipes',
+        verbose_name='Тэг',
+        help_text='Укажите тэг',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='recipes',
+        verbose_name='Автор',
+        help_text='Выберите автора'
+    )
+    ingredients = models.ManyToManyField(
+        Ingredient,
+        blank=False,
+        # related_name='recipes',
+        verbose_name='Ингредиенты',
+        help_text='Укажите ингредиенты',
+        through='IngredientAmount'
+    )
+    name = models.CharField(
+        max_length=150,
+        verbose_name='Название рецепта',
+        help_text='Укажите название рецепта'
+    )
+    text = models.TextField(
+        verbose_name='Рецепт',
+        help_text='Напишите рецепт'
+    )
+    image = models.ImageField(
+        upload_to='recipes/images/',
+        blank=True,
+        null=True,
+        verbose_name='Изображение рецепта',
+        help_text='Загрузите изображение рецепта'
+    )
+    cooking_time = models.PositiveIntegerField(
+        verbose_name='Время приготовления',
+        help_text='Укажите время приготовления',
+    )
+
+    def __str__(self):
+        return self.name
+
+
+class Favorite(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='favorites',
+        verbose_name='Избранный рецепт',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favorites',
+        verbose_name='Подписчик на рецепт',
+    )
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['recipe', 'author'], name='recipe and author restraint')]
+
+    def __str__(self):
+        return f'{self.author}->{self.recipe}'
