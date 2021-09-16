@@ -7,38 +7,22 @@ from djoser.conf import settings
 from .models import Follow
 
 
-
 User = get_user_model()
-
-# def check_following(value):
-#     import ipdb; ipdb.set_trace() 
-#     return True
-
 
 
 class CustomUserSerializer(UserSerializer):
-    # is_subscribed = serializers.BooleanField(
-    #     validators=[check_following],
-    #     default=True
-    # )
     is_subscribed = serializers.SerializerMethodField(read_only=True)
     class Meta():
         model = User
         fields = ('email', 'username', 'first_name', 'last_name',  'id', 'is_subscribed')
     
     def get_is_subscribed(self, obj):
-        
-        # import ipdb; ipdb.set_trace() 
-        check_user = self.context['request'].user.username
-        if check_user:
+        if self.context['request'].user.is_authenticated:
             if Follow.objects.filter(
                 user=self.context['request'].user,
                 author=obj
-            ).exists() == True:
+            ).exists():
                 return True
-        # if follow_check.exists() == True:
-            # return True
-        # import ipdb; ipdb.set_trace() 
         return False
 
 
@@ -59,6 +43,3 @@ class SubscribeSerializer(CustomUserSerializer):
     class Meta():
         model = User
         fields = ('email', 'username', 'first_name', 'last_name',  'id', 'recipes', 'is_subscribed', 'recipes_count') 
-    # def validate_is_subscribed(self, value):
-    #     import ipdb; ipdb.set_trace() 
-    #     return True

@@ -34,7 +34,7 @@ class Ingredient(models.Model):
 class IngredientAmount(models.Model):
     recipe = models.ForeignKey(
         'Recipe',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         blank=False,
         # related_name='ingredientsamount',
         verbose_name='Рецепт',
@@ -56,8 +56,12 @@ class IngredientAmount(models.Model):
         default='0'
     )
     
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['recipe', 'ingredients'], name='recipe and ingredients in IngredientAmount restraint')]
+    
     def __str__(self):
-        return f'{self.ingredients} -> {self.recipe}'
+        return f'{self.ingredients} - {self.amount}'
 
 
 
@@ -151,7 +155,29 @@ class Favorite(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(
-            fields=['recipe', 'author'], name='recipe and author restraint')]
+            fields=['recipe', 'author'], name='recipe and author in Favorite restraint')]
+
+    def __str__(self):
+        return f'{self.author}->{self.recipe}'
+
+
+class ShoppingCart(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='shoppings',
+        verbose_name='Рецепт для списка покупок',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='shoppings',
+        verbose_name='Автор рецепта',
+    )
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['author', 'recipe',], name='recipe and author in ShoppingCart restraint')]
 
     def __str__(self):
         return f'{self.author}->{self.recipe}'

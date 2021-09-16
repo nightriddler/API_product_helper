@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Ingredient, Tag, Recipe, IngredientAmount, Favorite
+from .models import Ingredient, Tag, Recipe, IngredientAmount, Favorite, ShoppingCart
 from users.serializers import CustomUserSerializer
 
 
@@ -34,7 +34,33 @@ class IngredientRecipeSerializers(serializers.ModelSerializer):
             'measurement_unit',
             'amount',
         )
+
+
+class IngredientSerializers(serializers.ModelSerializer):
     
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
+    
+
+class IngredientRecipeCreateSerializers(serializers.ModelSerializer):
+    
+    # id = serializers.ReadOnlyField(source='ingredientamount_set.ingredients.id')
+    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+
+    # name = serializers.ReadOnlyField(source='ingredients.name')
+    # measurement_unit = serializers.ReadOnlyField(source='ingredients.measurement_unit')
+    # amount = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = IngredientAmount
+        # model = Ingredient
+        # fields = '__all__'
+        fields = (
+            'id',
+            # 'name',
+            # 'measurement_unit',
+            'amount',
+        )
     # def get_amount(self, obj):
     #     import ipdb; ipdb.set_trace() 
     #     return obj.measurement_unit
@@ -56,7 +82,6 @@ class RecipesListSerializers(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        # fields = '__all__'
         fields = (
             'id',
             'tags',
@@ -73,89 +98,81 @@ class RecipesListSerializers(serializers.ModelSerializer):
 
     def get_is_favorited(self, obj):
         # import ipdb; ipdb.set_trace() 
-        # check_user = self.context['request'].user.username
-        favorite = Favorite.objects.filter(
-            author=self.context['request'].user,
-            recipe=Recipe.objects.get(id=obj.id)
-        )
-        if favorite.exists() == False:
-            return False
-        return True
-        # if check_user:
-        #     if Follow.objects.filter(
-        #         user=self.context['request'].user,
-        #         author=obj
-        #     ).exists() == True:
-        #         return True
-        # # if follow_check.exists() == True:
-        #     # return True
-        # # import ipdb; ipdb.set_trace() 
-        # return False
-        # return False
-    
+        if self.context['request'].user.is_authenticated:
+            if Favorite.objects.filter(
+                author=self.context['request'].user,
+                recipe=Recipe.objects.get(id=obj.id)
+            ).exists():
+                return True
+        return False
+
     def get_is_in_shopping_cart(self, obj):
+        if self.context['request'].user.is_authenticated:
+            if ShoppingCart.objects.filter(
+                author=self.context['request'].user,
+                recipe=Recipe.objects.get(id=obj.id)
+            ).exists():
+                return True
         return False
 
 
 class CreateRecipeSerializers(serializers.ModelSerializer):
-    # tags = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-    # image = 
-    tags = TagSerializers
-    ingredients = IngredientSerializers
+    tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
+    ingredients = IngredientRecipeCreateSerializers(many=True)
+    author = CustomUserSerializer(read_only=True)
 
     class Meta:
         model = Recipe
         fields = (
-            'ingredients',
+            'id',
             'tags',
-            'image',
+            'author',
+            'ingredients',
             'name',
+            # 'image',
             'text',
             'cooking_time'
         )
     
+
     def create(self, validated_data):
-        import ipdb; ipdb.set_trace()
-        
+        # import ipdb; ipdb.set_trace()
         user = self.context['request'].user
-        ingredients_id = validated_data.pop('ingredients')[0]
-        tag_id = validated_data.pop('tags')[0]
-        ing = Ingredient.objects.get(id=ingredients_id)
-        t = Tag.objects.get(id=tag_id)
+        tags = validated_data.pop('tags')
+        ingredients_amount = validated_data.pop('ingredients')
         new_recipe = Recipe.objects.create(
-        author=user,
-        ingredients=ingredients_id,
-        tags=tag_id,
-        **validated_data
-        )
-
-
-        # new_recipe = Recipe()
-        # new_recipe.save()
+            author=user,
+            **validated_data
+            )
+        for tag in tags:
+            new_recipe.tags.add(tag)
         
-        # new_recipe.tags=tag_id
-        # new_recipe.ingredients =ingredients_id
-        # new_recipe.author = user
+        all_ingredients_amount = {
+            ingredient['id']:ingredient['amount'] 
+            for ingredient in ingredients_amount
+        }
+        for ingredient in all_ingredients_amount:
+            IngredientAmount.objects.create(
+                recipe=new_recipe,
+                ingredients=ingredient,
+                amount=all_ingredients_amount[ingredient]
+            )
         
-        new_recipe.save()
-        # tag_id = validated_data[0].pop('tags')
-        # ingredients_id = validated_data[0].pop('ingredients')
-        
-        # valid = **validated_data
-        # tag_add = Tag.objects.get_or_create(id=tag_id) 
-        # new_recipe = Recipe.objects.create(
-        #     author=user,
-        #     ingredients=ingredients_id,
-        #     tags=tag_id,
-        #     **validated_data
-        # )
         return new_recipe
+
+    def to_representation(self, instance):
+            data = RecipesListSerializers(
+                instance,
+                context={
+                    'request': self.context.get('request')
+                }
+            ).data
+            return data
 
 class FavoriteSerializer(RecipesListSerializers):
 
     class Meta:
         model = Recipe
-        # fields = '__all__'
         fields = (
             'id',
             'name',
