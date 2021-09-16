@@ -3,9 +3,17 @@ from django.db import models
 from django.db.models.deletion import CASCADE
 from django.db.models.expressions import Case
 from django.db.models.fields.related import ManyToManyField
-
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 
 User = get_user_model()
+
+def validate_cooking_time(value):
+    if value < 1:
+        raise ValidationError(
+        ('Время приготовления не может быть меньше 1.0'),
+        params={'value': value},
+    )
 
 class Ingredient(models.Model):
     name = models.CharField(
@@ -13,11 +21,6 @@ class Ingredient(models.Model):
         verbose_name='Название ингредиента',
         help_text='Укажите ингредиент'
     )
-    # amount = models.PositiveIntegerField(
-    #     verbose_name='Количество',
-    #     help_text='Укажите количество',
-    #     default='0'
-    # )
     measurement_unit = models.CharField(
         max_length=250,
         verbose_name='Единица измерения',
@@ -67,7 +70,7 @@ class IngredientAmount(models.Model):
 
 class Tag(models.Model):
     name = models.CharField(
-        max_length=150,
+        max_length=200,
         verbose_name='Название тэга',
         help_text='Укажите тэг',
         unique=True
@@ -115,7 +118,7 @@ class Recipe(models.Model):
         through='IngredientAmount'
     )
     name = models.CharField(
-        max_length=150,
+        max_length=200,
         verbose_name='Название рецепта',
         help_text='Укажите название рецепта'
     )
@@ -133,6 +136,7 @@ class Recipe(models.Model):
     cooking_time = models.PositiveIntegerField(
         verbose_name='Время приготовления',
         help_text='Укажите время приготовления',
+        validators=[validate_cooking_time]
     )
 
     def __str__(self):

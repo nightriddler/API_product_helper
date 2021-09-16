@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Ingredient, Tag, Recipe, IngredientAmount, Favorite, ShoppingCart
 from users.serializers import CustomUserSerializer
+from drf_base64.fields import Base64ImageField
 
 
 class TagSerializers(serializers.ModelSerializer):
@@ -94,7 +95,7 @@ class RecipesListSerializers(serializers.ModelSerializer):
             'text',
             'cooking_time'
         )
-        depth = 1
+        # depth = 1
 
     def get_is_favorited(self, obj):
         # import ipdb; ipdb.set_trace() 
@@ -120,6 +121,7 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
     ingredients = IngredientRecipeCreateSerializers(many=True)
     author = CustomUserSerializer(read_only=True)
+    image = Base64ImageField(required=True)
 
     class Meta:
         model = Recipe
@@ -129,14 +131,14 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             'author',
             'ingredients',
             'name',
-            # 'image',
+            'image',
             'text',
             'cooking_time'
         )
     
 
     def create(self, validated_data):
-        # import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
         user = self.context['request'].user
         tags = validated_data.pop('tags')
         ingredients_amount = validated_data.pop('ingredients')
@@ -144,6 +146,7 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             author=user,
             **validated_data
             )
+
         for tag in tags:
             new_recipe.tags.add(tag)
         
@@ -151,14 +154,39 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             ingredient['id']:ingredient['amount'] 
             for ingredient in ingredients_amount
         }
+
         for ingredient in all_ingredients_amount:
             IngredientAmount.objects.create(
                 recipe=new_recipe,
                 ingredients=ingredient,
                 amount=all_ingredients_amount[ingredient]
             )
-        
         return new_recipe
+
+    def update(self, update_recipe, validated_data):
+        import ipdb; ipdb.set_trace()
+        tags = validated_data.pop('tags')
+        ingredients_amount = validated_data.pop('ingredients')
+        Recipe.objects.filter(id=update_recipe.id).update(**validated_data)
+        update_recipe.refresh_from_db()
+        update_recipe.tags.clear()
+
+        for tag in tags:
+            update_recipe.tags.add(tag)
+        update_recipe.ingredients.clear()
+        all_ingredients_amount = {
+            ingredient['id']:ingredient['amount'] 
+            for ingredient in ingredients_amount
+        }
+
+        for ingredient in all_ingredients_amount:
+            IngredientAmount.objects.create(
+                recipe=update_recipe,
+                ingredients=ingredient,
+                amount=all_ingredients_amount[ingredient]
+            )
+        return update_recipe
+        pass
 
     def to_representation(self, instance):
             data = RecipesListSerializers(

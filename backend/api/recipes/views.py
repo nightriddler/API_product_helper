@@ -47,7 +47,7 @@ class IngredientViewSet(ListRetrievModel):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all().order_by('name')
+    queryset = Recipe.objects.all().order_by('id')
     serializer_class = RecipesListSerializers
     permission_classes = [permissions.IsAuthenticated,]
     filter_backends = [DjangoFilterBackend,]
@@ -57,14 +57,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     
     def get_permissions(self):
-        if self.action == 'create':
+        if self.action == 'create' or self.action == 'update':
             self.permission_classes = [permissions.IsAuthenticated]
         elif self.action == 'list' or self.action == 'retrieve':
             self.permission_classes = [permissions.AllowAny]
         return super().get_permissions()
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action == 'create' or self.action == 'update':
             return CreateRecipeSerializers
         elif self.action == 'list':
             return RecipesListSerializers
