@@ -1,26 +1,23 @@
 from django.contrib.auth import get_user_model
-from django.db import models
-from django.db.models.deletion import CASCADE
-from django.db.models.expressions import Case
-from django.db.models.fields.related import ManyToManyField
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
+from django.db import models
 
 User = get_user_model()
+
 
 def validate_cooking_time(value):
     if value < 1:
         raise ValidationError(
-        ('Время приготовления не может быть меньше 1.0'),
-        params={'value': value},
-    )
+            ('Время приготовления не может быть меньше 1.0'),
+            params={'value': value},)
+
 
 def validate_amount(value):
     if value <= 0:
         raise ValidationError(
-        ('Количество ингредиента должно быть больше 0'),
-        params={'value': value},
-    )
+            ('Количество ингредиента должно быть больше 0'),
+            params={'value': value},)
+
 
 class Ingredient(models.Model):
     name = models.CharField(
@@ -36,7 +33,7 @@ class Ingredient(models.Model):
 
     class Meta:
         ordering = ['name']
-    
+
     def __str__(self):
         return self.name
 
@@ -46,33 +43,29 @@ class IngredientAmount(models.Model):
         'Recipe',
         on_delete=models.CASCADE,
         blank=False,
-        # related_name='ingredientsamount',
         verbose_name='Рецепт',
         help_text='Укажите рецепт',
-        # default='0'
     )
     ingredients = models.ForeignKey(
         Ingredient,
         on_delete=models.PROTECT,
         blank=False,
-        # related_name='ingredientsamount',
         verbose_name='Ингредиенты',
         help_text='Укажите ингредиенты',
-        # default='0'
     )
     amount = models.FloatField(
         verbose_name='Количество',
         help_text='Укажите количество',
         validators=[validate_amount]
     )
-    
+
     class Meta:
         constraints = [models.UniqueConstraint(
-            fields=['recipe', 'ingredients'], name='recipe and ingredients in IngredientAmount restraint')]
-    
+            fields=['recipe', 'ingredients'],
+            name='recipe and ingredients in IngredientAmount restraint')]
+
     def __str__(self):
         return f'{self.ingredients} - {self.amount}'
-
 
 
 class Tag(models.Model):
@@ -96,7 +89,7 @@ class Tag(models.Model):
 
     class Meta:
         ordering = ['name']
-    
+
     def __str__(self):
         return self.name
 
@@ -166,7 +159,8 @@ class Favorite(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(
-            fields=['recipe', 'author'], name='recipe and author in Favorite restraint')]
+            fields=['recipe', 'author'],
+            name='recipe and author in Favorite restraint')]
 
     def __str__(self):
         return f'{self.author}->{self.recipe}'
@@ -188,7 +182,8 @@ class ShoppingCart(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(
-            fields=['author', 'recipe',], name='recipe and author in ShoppingCart restraint')]
+            fields=['author', 'recipe'],
+            name='recipe and author in ShoppingCart restraint')]
 
     def __str__(self):
         return f'{self.author}->{self.recipe}'
