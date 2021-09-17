@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('recipes', '0010_auto_20210914_1520'),
     ]
-
+    
     operations = [
         migrations.AlterField(
             model_name='ingredientamount',
