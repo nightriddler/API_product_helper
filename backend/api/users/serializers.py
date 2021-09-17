@@ -17,12 +17,12 @@ class CustomUserSerializer(UserSerializer):
         fields = ('email', 'username', 'first_name', 'last_name',  'id', 'is_subscribed')
     
     def get_is_subscribed(self, obj):
+        # import ipdb; ipdb.set_trace()
         if self.context['request'].user.is_authenticated:
-            if Follow.objects.filter(
+            return Follow.objects.filter(
                 user=self.context['request'].user,
                 author=obj
-            ).exists():
-                return True
+            ).exists()
         return False
 
 
@@ -37,6 +37,11 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
 
 class RecipesSubscribeSerializers(serializers.ModelSerializer):
+    def get_queryset(self):
+        
+        user = self.context['request'].user
+        queryset = Recipe.objects.filter(user=user)[:1]
+        return queryset
 
     class Meta:
         model = Recipe
@@ -48,7 +53,7 @@ class RecipesSubscribeSerializers(serializers.ModelSerializer):
         )
 
 class SubscribeSerializer(CustomUserSerializer):
-    recipes = RecipesSubscribeSerializers(many=True)
+    recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta():
@@ -57,3 +62,10 @@ class SubscribeSerializer(CustomUserSerializer):
 
     def get_recipes_count(self, obj):
         return Recipe.objects.filter(author=obj).count()
+    
+    def get_recipes(self, obj):
+        count_recipe = self.context['request'].query_params['recipes_limit']
+        queryset = obj.recipes.all()[:int(count_recipe)]
+        serializer = RecipesSubscribeSerializers(queryset, many=True)
+        return serializer.data
+

@@ -2,6 +2,7 @@ from django.db.models import Sum, Count
 from django.http import request
 from django.shortcuts import get_object_or_404, render
 from django.views import generic
+from django_filters import filters
 from djoser.permissions import CurrentUserOrAdmin 
 from rest_framework import mixins, serializers, viewsets, generics
 from djoser.views import UserViewSet
@@ -9,15 +10,18 @@ from djoser.serializers import SetPasswordSerializer
 from .serializers import TagSerializers, IngredientSerializers, RecipesListSerializers, CreateRecipeSerializers, FavoriteSerializer
 from .models import IngredientAmount, Recipe, Tag, Ingredient, Favorite, ShoppingCart
 from rest_framework import permissions, status, pagination
+from rest_framework import filters as rest_filters
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from .filters import RecipeFilter
 import io
 from django.http import FileResponse
 from reportlab.pdfgen import canvas
 import csv
 from django.http import HttpResponse
+from .permissions import IsOwnerAuthenticated
 
 
 class ListRetrievModel(
@@ -30,8 +34,8 @@ class TagViewSet(ListRetrievModel):
     queryset = Tag.objects.all().order_by('name')
     serializer_class = TagSerializers
     permission_classes = [permissions.AllowAny,]
-    filter_backends = [DjangoFilterBackend, ]
-    filterset_fields = ['name']
+    # filter_backends = [DjangoFilterBackend, ]
+    # filterset_fields = ['name']
     lookup_field = 'id'
     pagination_class = None
 
@@ -40,25 +44,32 @@ class IngredientViewSet(ListRetrievModel):
     queryset = Ingredient.objects.all().order_by('name')
     serializer_class = IngredientSerializers
     permission_classes = [permissions.AllowAny,]
-    filter_backends = [DjangoFilterBackend, ]
-    filterset_fields = ['name']
+    filter_backends = [DjangoFilterBackend, rest_filters.SearchFilter,]
+    filterset_fields = ['name', 'measurement_unit']
+    search_fields = ('^name',) 
     lookup_field = 'id'
     pagination_class = None
 
 
+
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all().order_by('id')
+    queryset = Recipe.objects.all().order_by('-id')
     serializer_class = RecipesListSerializers
     permission_classes = [permissions.IsAuthenticated,]
-    filter_backends = [DjangoFilterBackend,]
-    filterset_fields = ['author', 'tags',]
+    filter_backends = [DjangoFilterBackend, ]#RecipeFilter]
+    filterset_class = RecipeFilter
+    # filterset_fields = ['author', 'tags']
     lookup_field = 'id'
     http_method_names = ['get', 'post', 'put', 'head', 'delete']
 
-    
+
     def get_permissions(self):
-        if self.action == 'create' or self.action == 'update':
+        if self.action == 'create':
             self.permission_classes = [permissions.IsAuthenticated]
+        elif self.action == 'update' or self.action == 'delete':
+            self.permission_classes = [IsOwnerAuthenticated]
+        elif self.action == 'destroy':
+            self.permission_classes = [IsOwnerAuthenticated]
         elif self.action == 'list' or self.action == 'retrieve':
             self.permission_classes = [permissions.AllowAny]
         return super().get_permissions()
@@ -152,7 +163,6 @@ def download_shopping_cart(request):
         content_type='text/csv',
         headers={'Content-Disposition': 'attachment; filename="Shopping List.csv"'},
     )
-    # import ipdb; ipdb.set_trace()
     all_ingredients = dict()
     # Список рецептов юзера с токеном
     all_shop_list = [recipe for recipe in request.user.shoppings.all()]
@@ -173,19 +183,6 @@ def download_shopping_cart(request):
             else:
                 all_ingredients[key] = ingredient_in_recipe[key]
 
-    # Список ингредиентов для каждого рецепта этого автора
-    # all_ingredients_reciepes_user = [shop_cart.recipe.ingredientamount_set.all() for shop_cart in list_shopping_cart]
-    # или так (список с кверисетами ингредиентов каждого рецепта автора)
-    # all_ingredients_user = [shop_cart.recipe.ingredientamount_set.all() for shop_cart in request.user.shoppings.all()]
-    # Объединяем все кверисеты в один список
-    # from itertools import chain
-    # result_list = list(chain(**all_ingredients_user))
-    # Сумма количества ингредиентов без привязки к рецепту
-    # IngredientAmount.objects.values('ingredients').annotate(sum=Sum('amount'))
-    # Сумма количества ингредиентов с привязкой к рецепту
-    # i = IngredientAmount.objects.values('ingredients').annotate(sum=Sum('amount')).filter(recipe=list_shopping_cart[0].recipe)
-    # all =  IngredientAmount.objects.values('amount').order_by('-count').annotate(count=Count('amount'))    
-
     writer = csv.writer(
         response,
         escapechar="'",
@@ -195,6 +192,4 @@ def download_shopping_cart(request):
     writer.writerow([])
     for ingredient in all_ingredients:
         writer.writerow([f'{ingredient} - {all_ingredients[ingredient][0]} {all_ingredients[ingredient][1]}'])
-        # writer.writerow([ingredient, all_ingredients[ingredient][0], all_ingredients[ingredient][1]])
-
     return response

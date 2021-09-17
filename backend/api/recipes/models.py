@@ -15,6 +15,13 @@ def validate_cooking_time(value):
         params={'value': value},
     )
 
+def validate_amount(value):
+    if value <= 0:
+        raise ValidationError(
+        ('Количество ингредиента должно быть больше 0'),
+        params={'value': value},
+    )
+
 class Ingredient(models.Model):
     name = models.CharField(
         max_length=250,
@@ -53,10 +60,10 @@ class IngredientAmount(models.Model):
         help_text='Укажите ингредиенты',
         # default='0'
     )
-    amount = models.PositiveIntegerField(
+    amount = models.FloatField(
         verbose_name='Количество',
         help_text='Укажите количество',
-        default='0'
+        validators=[validate_amount]
     )
     
     class Meta:

@@ -100,20 +100,19 @@ class RecipesListSerializers(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         # import ipdb; ipdb.set_trace() 
         if self.context['request'].user.is_authenticated:
-            if Favorite.objects.filter(
+            return Favorite.objects.filter(
+
                 author=self.context['request'].user,
-                recipe=Recipe.objects.get(id=obj.id)
-            ).exists():
-                return True
+                recipe=obj
+                ).exists()
         return False
 
     def get_is_in_shopping_cart(self, obj):
         if self.context['request'].user.is_authenticated:
-            if ShoppingCart.objects.filter(
+            return ShoppingCart.objects.filter(
                 author=self.context['request'].user,
-                recipe=Recipe.objects.get(id=obj.id)
-            ).exists():
-                return True
+                recipe=obj
+                ).exists()
         return False
 
 
@@ -138,7 +137,6 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
     
 
     def create(self, validated_data):
-        import ipdb; ipdb.set_trace()
         user = self.context['request'].user
         tags = validated_data.pop('tags')
         ingredients_amount = validated_data.pop('ingredients')
@@ -164,7 +162,7 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
         return new_recipe
 
     def update(self, update_recipe, validated_data):
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         tags = validated_data.pop('tags')
         ingredients_amount = validated_data.pop('ingredients')
         Recipe.objects.filter(id=update_recipe.id).update(**validated_data)

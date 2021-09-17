@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from .filters import RecipeCountInFollowFilter
 
 
 User = get_user_model()
@@ -39,7 +40,8 @@ class CustomUserViewSet(
     serializer_class = CustomUserSerializer
     permission_classes = [CurrentUserOrAdmin,]
     filter_backends = [DjangoFilterBackend, ]
-    filterset_fields = ['username']
+    filterset_class = RecipeCountInFollowFilter
+    # filterset_fields = ['username']
     lookup_field = 'id'
     
 
@@ -51,8 +53,8 @@ class CustomUserViewSet(
                 permissions.AllowAny,
                 # CurrentUserOrAdmin
                 ]
-        # elif self.action == 'subscriptions':
-        #     self.permission_classes = [permissions.IsAuthenticated]
+        elif self.action == 'subscriptions':
+            self.permission_classes = [permissions.IsAuthenticated]
         return super().get_permissions()
 
     def get_serializer_class(self):
@@ -72,10 +74,7 @@ class CustomUserViewSet(
         detail=False
     )
     def me(self, request):
-        
         serializer = self.get_serializer(request.user)        
-        # serializer = self.get_serializer_class()
-        # data = serializer(request.user).data
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(
@@ -94,52 +93,83 @@ class CustomUserViewSet(
         methods=['GET'],
         permission_classes=[permissions.IsAuthenticated],
         detail=False)
-    def subscriptions(self, request):
-        
+    def subscriptions(self, request):        
+        # import ipdb; ipdb.set_trace()
         following = Follow.objects.filter(user=request.user).order_by('author')
-
         queryset =[User.objects.get(id=author.author.id) for author in following]
-        # for author in following:
-        #     queryset.append(User.objects.get(id=author.author.id))
-
-        # queryset = User.objects.filter(id=Follow.objects.get(user=request.user).author.id)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        # Изменить сериализтор когда добавятся рецепты.
+
         serializer = self.get_serializer(queryset, many=True)
-        # data = serializer.data
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-@api_view(['GET', 'DELETE'])
-@permission_classes([permissions.IsAuthenticated])
-def subscribe(request, user_id):
-    if request.method == 'GET':
-        if request.user == get_object_or_404(User, id=user_id):
-            return Response({'error': 'Вы не можете подписаться на себя'}, status=status.HTTP_400_BAD_REQUEST)
-        follow_check = Follow.objects.filter(
-            user=request.user,
-            author=get_object_or_404(User, id=user_id)
-        )
-        if follow_check.exists() == True:
-            return Response({'error': 'Вы уже подписаны на этого автора'}, status=status.HTTP_400_BAD_REQUEST)
-        Follow.objects.create(
-            user=request.user,
-            author=get_object_or_404(User, id=user_id)
-        )
-        return Response(status=status.HTTP_201_CREATED)
-    if request.method == 'DELETE':
-        follow = Follow.objects.filter(
-            user=request.user,
-            author=get_object_or_404(User, id=user_id)
-        )
-        if follow.exists() == False:
-            return Response({'error': 'Вы не можете отписаться не создав подписку'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        follow.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    serializer = SubscribeSerializer(data=request.data)
-    return Response(serializer, status=status.HTTP_200_OK)
+    @action(
+        methods=['get','delete'],
+        detail=True,
+        # permission_classes=[permissions.IsAuthenticated]
+        )
+    def subscribe(self, request, id):
+        # import ipdb; ipdb.set_trace()
+        if request.method == 'GET':
+            if request.user == get_object_or_404(User, id=id):
+                return Response({'error': 'Вы не можете подписаться на себя'}, status=status.HTTP_400_BAD_REQUEST)
+            follow_check = Follow.objects.filter(
+                user=request.user,
+                author=get_object_or_404(User, id=id)
+            )
+            if follow_check.exists():
+                return Response({'error': 'Вы уже подписаны на этого автора'}, status=status.HTTP_400_BAD_REQUEST)
+
+            Follow.objects.create(
+                user=request.user,
+                author=get_object_or_404(User, id=id)
+            )
+            return Response(status=status.HTTP_201_CREATED)
+        if request.method == 'DELETE':
+            follow = Follow.objects.filter(
+                user=request.user,
+                author=get_object_or_404(User, id=id)
+            )
+            if follow.exists() == False:
+                return Response({'error': 'Вы не можете отписаться не создав подписку'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            follow.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = SubscribeSerializer(data=request.data)
+        return Response(serializer, status=status.HTTP_200_OK)
+
+# @api_view(['GET', 'DELETE'])
+# @permission_classes([permissions.IsAuthenticated])
+# def subscribe(request, user_id):
+#     if request.method == 'GET':
+#         if request.user == get_object_or_404(User, id=user_id):
+#             return Response({'error': 'Вы не можете подписаться на себя'}, status=status.HTTP_400_BAD_REQUEST)
+#         follow_check = Follow.objects.filter(
+#             user=request.user,
+#             author=get_object_or_404(User, id=user_id)
+#         )
+#         if follow_check.exists() == True:
+#             return Response({'error': 'Вы уже подписаны на этого автора'}, status=status.HTTP_400_BAD_REQUEST)
+#         Follow.objects.create(
+#             user=request.user,
+#             author=get_object_or_404(User, id=user_id)
+#         )
+#         return Response(status=status.HTTP_201_CREATED)
+#     if request.method == 'DELETE':
+#         follow = Follow.objects.filter(
+#             user=request.user,
+#             author=get_object_or_404(User, id=user_id)
+#         )
+#         if follow.exists() == False:
+#             return Response({'error': 'Вы не можете отписаться не создав подписку'}, status=status.HTTP_400_BAD_REQUEST)
+        
+#         follow.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+
+#     serializer = SubscribeSerializer(data=request.data)
+#     return Response(serializer, status=status.HTTP_200_OK)
