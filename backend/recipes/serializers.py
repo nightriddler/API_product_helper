@@ -1,10 +1,25 @@
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
-
 from users.serializers import CustomUserSerializer
 
 from .models import (Favorite, Ingredient, IngredientAmount, Recipe,
                      ShoppingCart, Tag)
+from .validators import validate_amount, validate_cooking_time
+
+
+def add_tags_and_ingredients_in_recipe(recipe, tags, ingredients_amount):
+    for tag in tags:
+        recipe.tags.add(tag)
+    all_ingredients_amount = {
+        ingredient['id']: ingredient['amount']
+        for ingredient in ingredients_amount
+    }
+    for ingredient in all_ingredients_amount:
+        IngredientAmount.objects.create(
+            recipe=recipe,
+            ingredients=ingredient,
+            amount=all_ingredients_amount[ingredient]
+        )
 
 
 class TagSerializers(serializers.ModelSerializer):
@@ -36,13 +51,6 @@ class IngredientRecipeSerializers(serializers.ModelSerializer):
             'measurement_unit',
             'amount',
         )
-
-
-# class IngredientSerializers(serializers.ModelSerializer):
-
-#     class Meta:
-#         model = Ingredient
-#         fields = ('id', 'name', 'measurement_unit')
 
 
 class IngredientRecipeCreateSerializers(serializers.ModelSerializer):
@@ -113,6 +121,7 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             'text',
             'cooking_time'
         )
+        validators = [validate_amount, validate_cooking_time]
 
     def create(self, validated_data):
         user = self.context['request'].user
@@ -122,21 +131,8 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             author=user,
             **validated_data
             )
-
-        for tag in tags:
-            new_recipe.tags.add(tag)
-
-        all_ingredients_amount = {
-            ingredient['id']: ingredient['amount']
-            for ingredient in ingredients_amount
-        }
-
-        for ingredient in all_ingredients_amount:
-            IngredientAmount.objects.create(
-                recipe=new_recipe,
-                ingredients=ingredient,
-                amount=all_ingredients_amount[ingredient]
-            )
+        add_tags_and_ingredients_in_recipe(
+            new_recipe, tags, ingredients_amount)
         return new_recipe
 
     def update(self, update_recipe, validated_data):
@@ -145,21 +141,9 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
         Recipe.objects.filter(id=update_recipe.id).update(**validated_data)
         update_recipe.refresh_from_db()
         update_recipe.tags.clear()
-
-        for tag in tags:
-            update_recipe.tags.add(tag)
         update_recipe.ingredients.clear()
-        all_ingredients_amount = {
-            ingredient['id']: ingredient['amount']
-            for ingredient in ingredients_amount
-        }
-
-        for ingredient in all_ingredients_amount:
-            IngredientAmount.objects.create(
-                recipe=update_recipe,
-                ingredients=ingredient,
-                amount=all_ingredients_amount[ingredient]
-            )
+        add_tags_and_ingredients_in_recipe(
+            update_recipe, tags, ingredients_amount)
         return update_recipe
 
     def to_representation(self, instance):

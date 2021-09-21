@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
-
 from recipes.models import Recipe
 from users.models import Follow
 
@@ -22,7 +21,6 @@ class CustomUserSerializer(UserSerializer):
             'is_subscribed')
 
     def get_is_subscribed(self, obj):
-        # import ipdb; ipdb.set_trace()
         if self.context['request'].user.is_authenticated:
             return Follow.objects.filter(
                 user=self.context['request'].user,
@@ -73,7 +71,6 @@ class SubscribeSerializer(CustomUserSerializer):
         return Recipe.objects.filter(author=obj).count()
 
     def get_recipes(self, obj):
-        # import ipdb; ipdb.set_trace()
         queryset = obj.recipes.all()
         if self.context['request'].query_params.get('recipes_limit'):
             count_recipe = self.context[

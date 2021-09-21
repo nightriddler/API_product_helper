@@ -1,22 +1,9 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.db import models
 
+from .validators import validate_amount, validate_cooking_time
+
 User = get_user_model()
-
-
-def validate_cooking_time(value):
-    if value < 1:
-        raise ValidationError(
-            ('Время приготовления не может быть меньше 1.0'),
-            params={'value': value},)
-
-
-def validate_amount(value):
-    if value <= 0:
-        raise ValidationError(
-            ('Количество ингредиента должно быть больше 0'),
-            params={'value': value},)
 
 
 class Ingredient(models.Model):
@@ -33,6 +20,8 @@ class Ingredient(models.Model):
 
     class Meta:
         ordering = ['name']
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиенты'
 
     def __str__(self):
         return self.name
@@ -60,6 +49,8 @@ class IngredientAmount(models.Model):
     )
 
     class Meta:
+        verbose_name = 'Количество ингредиента'
+        verbose_name_plural = 'Количество ингредиентов'
         constraints = [models.UniqueConstraint(
             fields=['recipe', 'ingredients'],
             name='recipe and ingredients in IngredientAmount restraint')]
@@ -88,6 +79,8 @@ class Tag(models.Model):
     )
 
     class Meta:
+        verbose_name = 'Тэг'
+        verbose_name_plural = 'Тэги'
         ordering = ['name']
 
     def __str__(self):
@@ -112,7 +105,6 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient,
         blank=False,
-        # related_name='recipes',
         verbose_name='Ингредиенты',
         help_text='Укажите ингредиенты',
         through='IngredientAmount'
@@ -139,6 +131,10 @@ class Recipe(models.Model):
         validators=[validate_cooking_time]
     )
 
+    class Meta:
+        verbose_name = 'Рецепт'
+        verbose_name_plural = 'Рецепты'
+
     def __str__(self):
         return self.name
 
@@ -158,6 +154,8 @@ class Favorite(models.Model):
     )
 
     class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранные'
         constraints = [models.UniqueConstraint(
             fields=['recipe', 'author'],
             name='recipe and author in Favorite restraint')]
@@ -181,6 +179,8 @@ class ShoppingCart(models.Model):
     )
 
     class Meta:
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Список покупок'
         constraints = [models.UniqueConstraint(
             fields=['author', 'recipe'],
             name='recipe and author in ShoppingCart restraint')]

@@ -9,4 +9,5 @@ class FollowAdmin(admin.ModelAdmin):
     list_filter = ('author', 'user',)
     empty_value_display = '-пусто-'
 
+
 admin.site.register(Follow, FollowAdmin)

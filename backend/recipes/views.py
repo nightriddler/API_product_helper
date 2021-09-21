@@ -1,27 +1,21 @@
 import csv
 
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters as rest_filters
-from rest_framework import mixins, permissions, status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .filters import RecipeFilter
-from .models import (Favorite, Ingredient, Recipe,
+from .mixins import ListRetrievModel
+from .models import (Favorite, Ingredient, IngredientAmount, Recipe,
                      ShoppingCart, Tag)
 from .permissions import IsOwnerAuthenticated
 from .serializers import (CreateRecipeSerializers, IngredientSerializers,
                           RecipesListSerializers, TagSerializers)
-
-
-class ListRetrievModel(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
-):
-    pass
 
 
 class TagViewSet(ListRetrievModel):
@@ -46,22 +40,11 @@ class IngredientViewSet(ListRetrievModel):
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all().order_by('-id')
     serializer_class = RecipesListSerializers
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsOwnerAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
     lookup_field = 'id'
-    http_method_names = ['get', 'post', 'put', 'head', 'delete']
-
-    def get_permissions(self):
-        if self.action == 'create':
-            self.permission_classes = [permissions.IsAuthenticated]
-        elif self.action == 'update' or self.action == 'delete':
-            self.permission_classes = [IsOwnerAuthenticated]
-        elif self.action == 'destroy':
-            self.permission_classes = [IsOwnerAuthenticated]
-        elif self.action == 'list' or self.action == 'retrieve':
-            self.permission_classes = [permissions.AllowAny]
-        return super().get_permissions()
+    http_method_names = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE']
 
     def get_serializer_class(self):
         if self.action == 'create' or self.action == 'update':
@@ -71,22 +54,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return self.serializer_class
 
     @action(
-        methods=['get', 'delete'],
+        methods=['GET', 'DELETE'],
         permission_classes=[permissions.IsAuthenticated],
         detail=True)
     def favorite(self, request, id):
         if request.method == 'GET':
+            recipe = get_object_or_404(Recipe, id=id)
             favorite_check = Favorite.objects.filter(
                 author=request.user,
-                recipe=get_object_or_404(Recipe, id=id))
-            if favorite_check.exists() is True:
+                recipe=recipe)
+            if favorite_check.exists():
                 return Response(
                     {'error': 'Вы уже добавили этот рецепт в избранное'},
                     status=status.HTTP_400_BAD_REQUEST)
             Favorite.objects.create(
                 author=request.user,
-                recipe=get_object_or_404(Recipe, id=id))
-            recipe = Recipe.objects.get(id=id)
+                recipe=recipe)
             return Response(
                 {
                     'id': str(recipe.id),
@@ -95,37 +78,37 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     'cooking_time': str(recipe.cooking_time)
                 },
                 status=status.HTTP_201_CREATED)
-        if request.method == 'DELETE':
+        elif request.method == 'DELETE':
+            recipe = get_object_or_404(Recipe, id=id)
             favorite = Favorite.objects.filter(
                 author=request.user,
-                recipe=get_object_or_404(Recipe, id=id))
-            if favorite.exists() is False:
-                return Response(
-                    {'error':
-                        'Вы не можете удалить рецепт не '
-                        'добавив его в избранное'},
-                    status=status.HTTP_400_BAD_REQUEST)
-            favorite.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+                recipe=recipe)
+            if favorite.exists():
+                favorite.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {'error':
+                    'Вы не можете удалить рецепт не '
+                    'добавив его в избранное'},
+                status=status.HTTP_400_BAD_REQUEST)
 
     @action(
-        methods=['get', 'delete'],
+        methods=['GET', 'DELETE'],
         permission_classes=[permissions.IsAuthenticated],
         detail=True)
     def shopping_cart(self, request, id):
         if request.method == 'GET':
+            recipe = get_object_or_404(Recipe, id=id)
             shopping_cart_check = ShoppingCart.objects.filter(
                 author=request.user,
-                recipe=get_object_or_404(Recipe, id=id)
-            )
-            if shopping_cart_check.exists() is True:
+                recipe=recipe)
+            if shopping_cart_check.exists():
                 return Response(
                     {'error': 'Вы уже добавили этот рецепт в список покупок'},
                     status=status.HTTP_400_BAD_REQUEST)
             ShoppingCart.objects.create(
                 author=request.user,
-                recipe=get_object_or_404(Recipe, id=id))
-            recipe = Recipe.objects.get(id=id)
+                recipe=recipe)
             return Response(
                 {
                     'id': str(recipe.id),
@@ -133,24 +116,23 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     'image': request.build_absolute_uri(recipe.image.url),
                     'cooking_time': str(recipe.cooking_time)
                 },
-                status=status.HTTP_201_CREATED
-            )
-        if request.method == 'DELETE':
+                status=status.HTTP_201_CREATED)
+        elif request.method == 'DELETE':
+            recipe = get_object_or_404(Recipe, id=id)
             shopping_cart = ShoppingCart.objects.filter(
                 author=request.user,
-                recipe=get_object_or_404(Recipe, id=id)
-            )
-            if shopping_cart.exists() is False:
-                return Response(
-                    {'error':
-                        'Вы не можете удалить рецепт не '
-                        'добавив его в список покупок'},
-                    status=status.HTTP_400_BAD_REQUEST)
-            shopping_cart.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+                recipe=recipe)
+            if shopping_cart.exists():
+                shopping_cart.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {'error':
+                    'Вы не можете удалить рецепт не '
+                    'добавив его в список покупок'},
+                status=status.HTTP_400_BAD_REQUEST)
 
     @action(
-        methods=['get'],
+        methods=['GET'],
         permission_classes=[permissions.IsAuthenticated],
         detail=False)
     def download_shopping_cart(self, request):
@@ -161,27 +143,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 'attachment; filename="Shopping List.csv"'
             },
         )
-        all_ingredients = dict()
-        # Список рецептов юзера с токеном.
-        all_shop_list = [recipe for recipe in request.user.shoppings.all()]
-        for shop_list in all_shop_list:
-            # Словарь ингредиентов для каждого рецепта.
-            ingredient_in_recipe = {
-                each_ingredient.ingredients.name: [
-                    each_ingredient.amount,
-                    each_ingredient.ingredients.measurement_unit
-                ]
-                for each_ingredient in
-                shop_list.recipe.ingredientamount_set.all()
-            }
-            # Добавление ингредиентов в общий словарь.
-            for key in ingredient_in_recipe.keys():
-                if key in all_ingredients.keys():
-                    # Суммирование одинаковых ингредиентов.
-                    all_ingredients[key][0] += ingredient_in_recipe[key][0]
-                else:
-                    all_ingredients[key] = ingredient_in_recipe[key]
-
+        all_ingredients_amount = IngredientAmount.objects.filter(
+            recipe__shoppings__author=request.user).values_list(
+                'ingredients__name', 'amount', 'ingredients__measurement_unit')
+        sum_amount_ingredient = all_ingredients_amount.values(
+            'ingredients__name', 'ingredients__measurement_unit').annotate(
+                total=Sum('amount')).order_by('-total')
         writer = csv.writer(
             response,
             escapechar="'",
@@ -189,8 +156,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
         writer.writerow(['Список покупок'])
         writer.writerow([])
-        for ingredient in all_ingredients:
-            writer.writerow([f'{ingredient} - '
-                             f'{all_ingredients[ingredient][0]} '
-                             f'{all_ingredients[ingredient][1]}'])
+        for ingredient in sum_amount_ingredient:
+            writer.writerow(
+                [f'{ingredient["ingredients__name"]} - '
+                 f'{ingredient["total"]} '
+                 f'{ingredient["ingredients__measurement_unit"]}']
+            )
         return response
