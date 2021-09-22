@@ -44,7 +44,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
     lookup_field = 'id'
-    http_method_names = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE']
+    http_method_names = ['get', 'post', 'put', 'head', 'delete']
 
     def get_serializer_class(self):
         if self.action == 'create' or self.action == 'update':

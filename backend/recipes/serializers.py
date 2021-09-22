@@ -4,7 +4,6 @@ from users.serializers import CustomUserSerializer
 
 from .models import (Favorite, Ingredient, IngredientAmount, Recipe,
                      ShoppingCart, Tag)
-from .validators import validate_amount, validate_cooking_time
 from .utils import add_tags_and_ingredients_in_recipe
 
 
@@ -107,7 +106,6 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             'text',
             'cooking_time'
         )
-        validators = [validate_amount, validate_cooking_time]
 
     def create(self, validated_data):
         user = self.context['request'].user
