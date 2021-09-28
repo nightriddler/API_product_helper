@@ -32,7 +32,7 @@ class CustomUserViewSet(
             return CustomUserSerializer
         elif self.action == 'create':
             return CustomUserCreateSerializer
-        elif self.action == 'subscriptions':
+        elif self.action == 'subscriptions' or self.action == 'subscribe':
             return SubscribeSerializer
         return self.serializer_class
 
@@ -76,23 +76,23 @@ class CustomUserViewSet(
         detail=True)
     def subscribe(self, request, id):
         if request.method == 'GET':
-            if request.user == get_object_or_404(User, id=id):
+            author = get_object_or_404(User, id=id)
+            if request.user == author:
                 return Response(
                     {'error': 'Вы не можете подписаться на себя'},
                     status=status.HTTP_400_BAD_REQUEST)
             follow_check = Follow.objects.filter(
                 user=request.user,
-                author=get_object_or_404(User, id=id))
+                author=author)
             if follow_check.exists():
                 return Response(
                     {'error': 'Вы уже подписаны на этого автора'},
                     status=status.HTTP_400_BAD_REQUEST)
-
             Follow.objects.create(
                 user=request.user,
-                author=get_object_or_404(User, id=id)
-            )
-            return Response(status=status.HTTP_201_CREATED)
+                author=author)
+            serializer = self.get_serializer(author)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         elif request.method == 'DELETE':
             follow = Follow.objects.filter(
                 user=request.user,

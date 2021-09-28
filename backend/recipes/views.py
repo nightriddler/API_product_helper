@@ -1,15 +1,12 @@
-import csv
-
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters as rest_filters
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .filters import RecipeFilter
+from .filters import RecipeFilter, IngredientsFilter
 from .mixins import ListRetrievModel
 from .models import (Favorite, Ingredient, IngredientAmount, Recipe,
                      ShoppingCart, Tag)
@@ -30,9 +27,8 @@ class IngredientViewSet(ListRetrievModel):
     queryset = Ingredient.objects.all().order_by('name')
     serializer_class = IngredientSerializers
     permission_classes = [permissions.AllowAny]
-    filter_backends = [DjangoFilterBackend, rest_filters.SearchFilter]
-    filterset_fields = ['name', 'measurement_unit']
-    search_fields = ('^name')
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = IngredientsFilter
     lookup_field = 'id'
     pagination_class = None
 
@@ -136,30 +132,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated],
         detail=False)
     def download_shopping_cart(self, request):
-        response = HttpResponse(
-            content_type='text/csv',
-            headers={
-                'Content-Disposition':
-                'attachment; filename="Shopping List.csv"'
-            },
-        )
         all_ingredients_amount = IngredientAmount.objects.filter(
             recipe__shoppings__author=request.user).values_list(
                 'ingredients__name', 'amount', 'ingredients__measurement_unit')
         sum_amount_ingredient = all_ingredients_amount.values(
             'ingredients__name', 'ingredients__measurement_unit').annotate(
                 total=Sum('amount')).order_by('-total')
-        writer = csv.writer(
-            response,
-            escapechar="'",
-            quoting=csv.QUOTE_NONE
-        )
-        writer.writerow(['Список покупок'])
-        writer.writerow([])
+
+        shop_list = [f'Список покупок {request.user} \n \n']
         for ingredient in sum_amount_ingredient:
-            writer.writerow(
-                [f'{ingredient["ingredients__name"]} - '
-                 f'{ingredient["total"]} '
-                 f'{ingredient["ingredients__measurement_unit"]}']
+            shop_list.append(
+                f'{ingredient["ingredients__name"]} - '
+                f'{ingredient["total"]} '
+                f'{ingredient["ingredients__measurement_unit"]} \n'
             )
+        response = HttpResponse(shop_list, 'Content-Type: text/plain')
+        response[
+            'Content-Disposition'] = 'attachment; filename="shop_list.txt"'
         return response
