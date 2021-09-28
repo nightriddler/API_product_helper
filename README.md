@@ -1,1 +1,8 @@
-# praktikum_new_diplom
+# Продуктовый помощник
+
+[Сайт](https://drunkbrush.ru/)
+
+```
+email = aizi@aizi.ru
+password = aizi
+```

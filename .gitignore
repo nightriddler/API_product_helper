@@ -130,3 +130,11 @@ dmypy.json
 
 # .idea
 .idea
+
+#custom
+backend/api/recipes/images/*
+backend/api/static/*
+backend/api/static/
+backend/static/*
+backend/static/
+backend/media/*
