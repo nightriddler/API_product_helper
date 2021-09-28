@@ -1,6 +1,6 @@
 # Продуктовый помощник
 
-[Сайт](https://drunkbrush.ru/)
+[Сайт](http://drunkbrush.ru/)
 
 ```
 email = aizi@aizi.ru
