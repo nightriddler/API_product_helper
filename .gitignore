@@ -138,3 +138,4 @@ backend/api/static/
 backend/static/*
 backend/static/
 backend/media/*
+.vscode/

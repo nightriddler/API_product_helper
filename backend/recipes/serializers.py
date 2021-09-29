@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from users.serializers import CustomUserSerializer
@@ -40,6 +41,7 @@ class IngredientRecipeSerializers(serializers.ModelSerializer):
 
 class IngredientRecipeCreateSerializers(serializers.ModelSerializer):
     id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+    amount = serializers.FloatField()
 
     class Meta:
         model = IngredientAmount
@@ -93,6 +95,7 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
     ingredients = IngredientRecipeCreateSerializers(many=True)
     author = CustomUserSerializer(read_only=True)
     image = Base64ImageField(required=True)
+    cooking_time = serializers.IntegerField()
 
     class Meta:
         model = Recipe
@@ -106,6 +109,22 @@ class CreateRecipeSerializers(serializers.ModelSerializer):
             'text',
             'cooking_time'
         )
+
+    def validate_ingredients(self, data):
+        if not data:
+            raise ValidationError(
+                'В рецепте должен быть хотя бы 1 ингредиент')
+        for ingredient in data:
+            if ingredient['amount'] <= 0:
+                raise ValidationError(
+                    'Количество ингредиента должно быть больше 0')
+        return data
+
+    def validate_cooking_time(self, data):
+        if data <= 0:
+            raise ValidationError(
+                'Время приготовления не может быть меньше 1.0')
+        return data
 
     def create(self, validated_data):
         user = self.context['request'].user

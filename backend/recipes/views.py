@@ -10,6 +10,7 @@ from .filters import RecipeFilter, IngredientsFilter
 from .mixins import ListRetrievModel
 from .models import (Favorite, Ingredient, IngredientAmount, Recipe,
                      ShoppingCart, Tag)
+from .pagination import CustomRecipePagination
 from .permissions import IsOwnerAuthenticated
 from .serializers import (CreateRecipeSerializers, IngredientSerializers,
                           RecipesListSerializers, TagSerializers)
@@ -39,11 +40,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecipeFilter
+    pagination_class = CustomRecipePagination
     lookup_field = 'id'
-    http_method_names = ['get', 'post', 'put', 'head', 'delete']
+    http_method_names = ['get', 'post', 'put', 'patch', 'head', 'delete']
 
     def get_serializer_class(self):
-        if self.action == 'create' or self.action == 'update':
+        if (self.action == 'create' or
+                self.action == 'update' or
+                self.action == 'partial_update'):
             return CreateRecipeSerializers
         elif self.action == 'list':
             return RecipesListSerializers

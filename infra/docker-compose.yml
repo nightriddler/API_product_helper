@@ -17,7 +17,7 @@ services:
       - db
 
   web:
-    image: nightriddler/api_food:v1.3
+    image: nightriddler/api_food:v1.5
     restart: always
     volumes:
       - static_value:/code/static/
