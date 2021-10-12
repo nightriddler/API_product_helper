@@ -62,14 +62,29 @@ WSGI_APPLICATION = 'api.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': os.environ.get('ENGINE', default='django.db.backends.postgresql'),
-        'NAME': os.environ.get('NAME', default='postgres'),
-        'USER': os.environ.get('POSTGRES_USER', default='postgres'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', default='postgres'),
-        'HOST': os.environ.get('DB_HOST', default='db'),
-        'PORT': os.environ.get('DB_PORT', default=5432)
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'api_fg',
+        # 'NAME': 'postgres',
+        # 'USER': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': '220289',
+        # 'PASSWORD': 'postgres',
+        'HOST': '127.0.0.1',
+        # 'HOST': 'db',
+        'PORT': 5432
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': os.environ.get('ENGINE', default='django.db.backends.postgresql'),
+#         'NAME': os.environ.get('NAME', default='postgres'),
+#         'USER': os.environ.get('POSTGRES_USER', default='postgres'),
+#         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', default='postgres'),
+#         'HOST': os.environ.get('DB_HOST', default='db'),
+#         'PORT': os.environ.get('DB_PORT', default=5432)
+#     }
+# }
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
